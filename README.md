@@ -129,7 +129,7 @@ And traced its parent process:
 
 ![Screenshot: vol11_room_complete.png](screenshots/vol11_room_complete.png)
 
-*Room completion screen — 100%.*
+*Room completion*
 
 ---
 
@@ -205,7 +205,7 @@ cat /mnt/loop4/flag.txt
 
 ![Screenshot: fi08_room_complete.png](screenshots/fi08_room_complete.png)
 
-*Room completion screen — 100%.*
+*Room completion*
 
 ---
 
@@ -301,7 +301,7 @@ Finally, in the root of the extracted pandorasbox folder, there was a file named
 
 ![Screenshot: case15_room_complete.png](screenshots/case15_room_complete.png)
 
-*Room completion screen — 100%.*
+*Room completion*
 
 ---
 
