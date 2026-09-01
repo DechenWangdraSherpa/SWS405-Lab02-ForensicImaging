@@ -50,6 +50,7 @@ I started by pulling basic host info from the memory dump to confirm the build v
 `python3 vol.py -f Investigation-1.vmem windows.info`
 
 ![Screenshot: vol01_windows_info.png](screenshots/vol01_windows_info.png)
+
 *Shows the `NTBuildLab` and `SystemTime` fields — confirms build `2600.xpsp.080413-2111` and acquisition time `2012-07-22 02:45:08`.*
 
 Next, I searched the process tree for anything Adobe-related, since the case hinted at a malicious Adobe document.
@@ -57,6 +58,7 @@ Next, I searched the process tree for anything Adobe-related, since the case hin
 `python3 vol.py -f Investigation-1.vmem windows.pstree | grep -i adobe`
 
 ![Screenshot: vol02_pstree_adobe.png](screenshots/vol02_pstree_adobe.png)
+
 *Shows the full path `C:\Program Files\Adobe\Reader 9.0\Reader\Reader_sl.exe`.*
 
 To find its parent process, I ran a full process scan:
@@ -64,6 +66,7 @@ To find its parent process, I ran a full process scan:
 `python3 vol.py -f Investigation-1.vmem windows.psscan`
 
 ![Screenshot: vol03_psscan_ppid.png](screenshots/vol03_psscan_ppid.png)
+
 *Shows PID 1484 (Reader_sl.exe) with its PPID pointing to explorer.exe.*
 
 I then checked which DLLs it had loaded outside the usual `system32` directory, since that's often a sign of something unusual:
@@ -71,6 +74,7 @@ I then checked which DLLs it had loaded outside the usual `system32` directory, 
 `python3 vol.py -f Investigation-1.vmem windows.dlllist --pid 1484 | grep -v -i system32`
 
 ![Screenshot: vol04_dlllist.png](screenshots/vol04_dlllist.png)
+
 *Shows 3 DLLs loaded from outside system32.*
 
 I also checked its handles for anything unusual:
@@ -78,6 +82,7 @@ I also checked its handles for anything unusual:
 `python3 vol.py -f Investigation-1.vmem windows.handles --pid 1484 | grep -i keyedevent`
 
 ![Screenshot: vol05_handles.png](screenshots/vol05_handles.png)
+
 *Shows the `CritSecOutOfMemoryEvent` KeyedEvent handle.*
 
 To look for actual injected code, I ran `malfind` and filtered for processes flagged with a Windows executable (MZ) header in memory that shouldn't normally have one:
@@ -85,6 +90,7 @@ To look for actual injected code, I ran `malfind` and filtered for processes fla
 `python3 vol.py -f Investigation-1.vmem windows.malfind | grep -i "mz header"`
 
 ![Screenshot: vol06_malfind.png](screenshots/vol06_malfind.png)
+
 *Shows both `explorer.exe` and `reader_sl.exe` flagged with MZ headers.*
 
 Finally, I checked for kernel-level hooking using the SSDT plugin, since this is a common rootkit technique:
@@ -92,6 +98,7 @@ Finally, I checked for kernel-level hooking using the SSDT plugin, since this is
 `python3 vol.py -f Investigation-1.vmem windows.ssdt`
 
 ![Screenshot: vol07_ssdt.png](screenshots/vol07_ssdt.png)
+
 *Shows the hooked `NtCreateFile` entry at address `0x8056e27c`.*
 
 **Case 002 — Ransomware Investigation**
@@ -101,6 +108,7 @@ Switching to the second memory dump, I was told a suspicious process was running
 `python3 vol.py -f Investigation-2.raw windows.psscan --pid 740`
 
 ![Screenshot: vol08_case2_psscan.png](screenshots/vol08_case2_psscan.png)
+
 *Shows the `@WanaDecryptor@` process.*
 
 I then pulled its binary path:
@@ -108,6 +116,7 @@ I then pulled its binary path:
 `python3 vol.py -f Investigation-2.raw windows.dlllist --pid 740`
 
 ![Screenshot: vol09_case2_dlllist.png](screenshots/vol09_case2_dlllist.png)
+
 *Shows the path `C:\Intel\ivecuqmanpnirkt615\@WanaDecryptor@.exe`.*
 
 And traced its parent process:
@@ -115,9 +124,11 @@ And traced its parent process:
 `python3 vol.py -f Investigation-2.raw windows.pstree --pid 740`
 
 ![Screenshot: vol10_case2_pstree.png](screenshots/vol10_case2_pstree.png)
+
 *Shows `tasksche.exe` as the parent process — consistent with the WannaCry ransomware family.*
 
 ![Screenshot: vol11_room_complete.png](screenshots/vol11_room_complete.png)
+
 *Room completion screen — 100%.*
 
 ---
@@ -129,6 +140,7 @@ I started in the Task 2 machine by listing all block devices to find the target 
 `lsblk -a`
 
 ![Screenshot: fi01_lsblk.png](screenshots/fi01_lsblk.png)
+
 *Shows the ~1.1G loop device that matches the disk size given in the task.*
 
 Once I confirmed the device, I imaged it using `dc3dd`, an enhanced version of `dd` that includes built-in hashing and logging:
@@ -136,6 +148,7 @@ Once I confirmed the device, I imaged it using `dc3dd`, an enhanced version of `
 `sudo dc3dd if=/dev/loop11 of=example1.img log=imaging_loop11.txt`
 
 ![Screenshot: fi02_dc3dd_imaging.png](screenshots/fi02_dc3dd_imaging.png)
+
 *Shows the full completion output — sector count, bytes copied, and completion timestamp.*
 
 To confirm the image was a perfect copy, I hashed both the image file and the original device and compared them:
@@ -143,6 +156,7 @@ To confirm the image was a perfect copy, I hashed both the image file and the or
 `sudo md5sum example1.img` and `sudo md5sum /dev/loop11`
 
 ![Screenshot: fi03_md5_match.png](screenshots/fi03_md5_match.png)
+
 *Shows both hashes matching exactly, confirming integrity.*
 
 For the follow-up exercise, I hashed the provided `exercise.img`:
@@ -150,6 +164,7 @@ For the follow-up exercise, I hashed the provided `exercise.img`:
 `sudo md5sum /home/analyst/exercise.img`
 
 ![Screenshot: fi04_exercise_md5.png](screenshots/fi04_exercise_md5.png)
+
 *Shows the MD5 hash of exercise.img.*
 
 I then mounted it to check its contents:
@@ -161,6 +176,7 @@ cat /mnt/exercise/flag.txt
 ```
 
 ![Screenshot: fi05_mount_flag.png](screenshots/fi05_mount_flag.png)
+
 *Shows the recovered flag `THM{mounttt-mounttt-me}`.*
 
 For the practical exercise on the Task 6 machine, I repeated the same imaging and hashing process on the attached 1GB loop device:
@@ -172,6 +188,7 @@ sudo md5sum /dev/loop4
 ```
 
 ![Screenshot: fi06_practical_md5.png](screenshots/fi06_practical_md5.png)
+
 *Shows matching hashes for the practical exercise device.*
 
 Then mounted it and read the flag:
@@ -183,9 +200,11 @@ cat /mnt/loop4/flag.txt
 ```
 
 ![Screenshot: fi07_practical_flag.png](screenshots/fi07_practical_flag.png)
+
 *Shows the recovered flag `THM{well-done-imaginggggggg}`.*
 
 ![Screenshot: fi08_room_complete.png](screenshots/fi08_room_complete.png)
+
 *Room completion screen — 100%.*
 
 ---
@@ -197,31 +216,37 @@ The first few tasks in this room were about understanding the scenario rather th
 Once I moved into FTK Imager, I started by checking whether the flash drive had EFS encryption on it:
 
 ![Screenshot: case01_efs_check.png](screenshots/case01_efs_check.png)
+
 *Shows the "No EFS encryption detected" result after running Detect EFS Encryption.*
 
 I then created a forensic image of the physical drive (Microsoft Virtual Disk) using Raw (dd) format, filled in the evidence details, and let FTK Imager generate the image:
 
 ![Screenshot: case02_image_verify.png](screenshots/case02_image_verify.png)
+
 *Shows the Drive/Image Verify Results window with the SHA1 hash confirming the image matches the source drive.*
 
 Opening the flash drive with hidden items shown in Windows Explorer, I counted all files present:
 
 ![Screenshot: case03_file_list_hidden.png](screenshots/case03_file_list_hidden.png)
+
 *Shows all 8 files on the flash drive, including hidden ones.*
 
 Looking back in the File List Pane, I checked for files marked with a red X, which indicates they'd been deleted:
 
 ![Screenshot: case04_deleted_files.png](screenshots/case04_deleted_files.png)
+
 *Shows 6 files marked as deleted.*
 
 I then sorted by size to find any recovered files with 0 bytes, which usually means corruption:
 
 ![Screenshot: case05_corrupted_files.png](screenshots/case05_corrupted_files.png)
+
 *Shows 3 files with 0 file size.*
 
 Moving into the forensics lab stage, I checked the tools directory on the Desktop and found a second tool alongside FTK Imager:
 
 ![Screenshot: case06_tools_dir.png](screenshots/case06_tools_dir.png)
+
 *Shows the `exiftool-12.47` folder.*
 
 I noticed a file called `hideout.pdf` sitting in the root folder. Its extension said PDF, but I wanted to confirm that with metadata, so I exported it and ran exiftool on it:
@@ -229,44 +254,53 @@ I noticed a file called `hideout.pdf` sitting in the root folder. Its extension 
 `exiftool C:\Users\dfir\Desktop\hideout.pdf`
 
 ![Screenshot: case07_hideout_exiftool.png](screenshots/case07_hideout_exiftool.png)
+
 *Shows the actual file type is JPEG, not PDF — the extension had been changed to disguise the file.*
 
 Using the Viewer Pane in FTK Imager, I checked the EXIF metadata on the same file to see if it revealed anything about how it was taken:
 
 ![Screenshot: case08_phone_hideout.png](screenshots/case08_phone_hideout.png)
+
 *Shows the camera model — ONEPLUS A6013 — used to photograph the hideout.*
 
 I repeated this for `warehouse.pdf`:
 
 ![Screenshot: case09_phone_warehouse.png](screenshots/case09_phone_warehouse.png)
+
 *Shows the camera model — Mi 9 Lite — used to photograph the warehouse.*
 
 To dig further into the suspect's activity, I exported `operations.xlsx`, renamed it to `operations.zip`, extracted it, and opened the text file inside:
 
 ![Screenshot: case10_operations_notes.png](screenshots/case10_operations_notes.png)
-*Shows the 2022 entry listing the point of contact (Karl Renato Abelardo) and GPS coordinates of a meetup (14°26'25.7"N 120°59'00.8"E).*
+
+*Shows the 2022 entry listing the point of contact (Karl Renato Abelardo) and GPS coordinates of a meetup (14°26'25.7"N 120°59'00.8"E).* 
 
 While reading through the extracted notes, I came across a password that looked like it belonged to another archive I'd found — `pandorasbox.zip`:
 
 ![Screenshot: case11_pandorasbox_pw.png](screenshots/case11_pandorasbox_pw.png)
+
 *Shows the recovered password string used to unlock pandorasbox.zip.*
 
 After extracting the archive with that password, I opened one of the Python source files inside to check where the code had come from:
 
 ![Screenshot: case12_source_company.png](screenshots/case12_source_company.png)
+
 *Shows a comment header identifying the source company as SwiftSpend Financial.*
 
 Inside a `MUST_CLEAN` subfolder, I found several Word documents. One of them hadn't been signed yet, and it named a beneficiary:
 
 ![Screenshot: case13_beneficiary_doc.png](screenshots/case13_beneficiary_doc.png)
+
 *Shows the trust document naming Mr. Giovanni Vittorio DeVentura as beneficiary.*
 
 Finally, in the root of the extracted pandorasbox folder, there was a file named `DONOTOPEN`. Opening it in Notepad (ignoring the name) revealed the final flag:
 
 ![Screenshot: case14_hidden_flag.png](screenshots/case14_hidden_flag.png)
+
 *Shows the flag `THM{sCr0LL_sCr0LL_cL1cK_cL1cK_4TT3NT10N_2_D3T41L5_15_CRUC14L!!}`.*
 
 ![Screenshot: case15_room_complete.png](screenshots/case15_room_complete.png)
+
 *Room completion screen — 100%.*
 
 ---
